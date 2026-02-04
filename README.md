@@ -52,10 +52,12 @@ High-level flow:
 ### Start infrastructure
 ```bash
 docker compose up -d
+```bash
 
 ### Run API
 ```bash
 uvicorn app.main:app --reload
+```bash
 
 ### Health check
 ```bash
@@ -71,3 +73,4 @@ Upcoming:
 - pgvector schema
 - ingestion pipeline
 - retrieval & answering
+
