@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,8 +20,7 @@ class DocumentRepository:
 
     async def get(self, *, document_id: uuid.UUID) -> Document | None:
         res = await self._session.execute(select(Document).where(Document.id == document_id))
-        doc = cast(Document | None, res.scalar_one_or_none())
-        return doc
+        return res.scalar_one_or_none()
 
     async def set_status(
         self, *, document_id: uuid.UUID, status: str, error: str | None = None

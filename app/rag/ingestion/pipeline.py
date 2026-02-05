@@ -30,10 +30,10 @@ async def ingest_text_document(
 ) -> None:
     doc_repo = DocumentRepository(session)
     chunk_repo = ChunkRepository(session)
-    emb = EmbeddingsClient()
-
     await doc_repo.set_status(document_id=document_id, status="processing")
     await session.commit()
+
+    emb = EmbeddingsClient()
 
     try:
         chunks = chunk_text(text)

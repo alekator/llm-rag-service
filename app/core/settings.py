@@ -6,13 +6,14 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):  # type: ignore[misc]
+class Settings(BaseSettings):
     app_name: str = "llm-rag-service"
     env: str = "local"
     log_level: str = "INFO"
     api_v1_prefix: str = "/api/v1"
 
     database_url: str | None = Field(default=None, validation_alias="APP_DATABASE_URL")
+    redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="APP_REDIS_URL")
 
     @property
     def database_url_required(self) -> str:

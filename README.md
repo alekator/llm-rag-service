@@ -71,5 +71,3 @@ Upcoming:
 - pgvector schema
 - ingestion pipeline
 - retrieval & answering
-
-
