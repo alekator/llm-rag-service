@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +38,7 @@ class ChunkRepository:
         document_id: uuid.UUID,
         query_embedding: list[float],
         limit: int = 5,
-    ) -> Sequence[Chunk]:
+    ) -> list[Chunk]:
         # cosine distance: smaller is closer
         stmt = (
             select(Chunk)
@@ -48,4 +48,5 @@ class ChunkRepository:
             .limit(limit)
         )
         res = await self._session.execute(stmt)
-        return res.scalars().all()  # type: ignore[no-any-return]
+        rows = res.scalars().all()
+        return cast(list[Chunk], rows)

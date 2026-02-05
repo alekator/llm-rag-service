@@ -34,3 +34,10 @@ def get_settings() -> Settings:
     if not s.database_url:
         raise RuntimeError("APP_DATABASE_URL is not set (check .env or environment).")
     return s
+
+
+openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
+openai_base_url: str | None = Field(default=None, validation_alias="OPENAI_BASE_URL")
+openai_embeddings_model: str = Field(
+    default="text-embedding-3-small", validation_alias="OPENAI_EMBEDDINGS_MODEL"
+)
