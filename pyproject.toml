@@ -37,6 +37,10 @@ show_error_codes = true
 no_implicit_optional = true
 disallow_any_generics = true
 
+[[tool.mypy.overrides]]
+module = ["pgvector.*"]
+ignore_missing_imports = true
+
 # пока нет пакетов/модулей — это ок. Когда появится app/ — включим mypy по папкам точнее.
 files = ["app", "tests"]
 
