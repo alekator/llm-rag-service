@@ -15,6 +15,33 @@ class Settings(BaseSettings):
     database_url: str | None = Field(default=None, validation_alias="APP_DATABASE_URL")
     redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="APP_REDIS_URL")
 
+    openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
+    openai_base_url: str | None = Field(default=None, validation_alias="OPENAI_BASE_URL")
+    openai_embeddings_model: str = Field(
+        default="text-embedding-3-small", validation_alias="OPENAI_EMBEDDINGS_MODEL"
+    )
+
+    embeddings_backend: str = Field(
+        default="auto",
+        validation_alias="APP_EMBEDDINGS_BACKEND",
+        description="auto|openai|mock",
+    )
+    embeddings_dim: int = Field(
+        default=1536,
+        validation_alias="APP_EMBEDDINGS_DIM",
+        description="Vector size for mock embeddings and DB column dimension if used",
+    )
+
+    llm_backend: str = Field(
+        default="disabled",
+        validation_alias="APP_LLM_BACKEND",
+        description="disabled|openai",
+    )
+    openai_chat_model: str = Field(
+        default="gpt-4o-mini",
+        validation_alias="OPENAI_CHAT_MODEL",
+    )
+
     @property
     def database_url_required(self) -> str:
         if not self.database_url:
@@ -35,10 +62,3 @@ def get_settings() -> Settings:
     if not s.database_url:
         raise RuntimeError("APP_DATABASE_URL is not set (check .env or environment).")
     return s
-
-
-openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
-openai_base_url: str | None = Field(default=None, validation_alias="OPENAI_BASE_URL")
-openai_embeddings_model: str = Field(
-    default="text-embedding-3-small", validation_alias="OPENAI_EMBEDDINGS_MODEL"
-)

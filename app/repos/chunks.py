@@ -50,3 +50,32 @@ class ChunkRepository:
         res = await self._session.execute(stmt)
         rows = res.scalars().all()
         return cast(list[Chunk], rows)
+
+    async def search_with_score(
+        self,
+        *,
+        document_id: uuid.UUID,
+        query_embedding: list[float],
+        limit: int,
+    ) -> list[tuple[Chunk, float]]:
+        """
+        Returns (Chunk, score) where lower distance => higher score
+        """
+        distance = Chunk.embedding.cosine_distance(query_embedding)
+
+        stmt = (
+            select(Chunk, distance.label("distance"))
+            .where(Chunk.document_id == document_id)
+            .where(Chunk.embedding.is_not(None))
+            .order_by(distance)
+            .limit(limit)
+        )
+
+        res = await self._session.execute(stmt)
+
+        rows: list[tuple[Chunk, float]] = []
+        for chunk, dist in res.all():
+            score = 1.0 / (1.0 + dist) if dist is not None else 0.0
+            rows.append((chunk, score))
+
+        return rows
