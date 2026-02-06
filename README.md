@@ -231,7 +231,6 @@ This is the type of system that can realistically evolve into:
 - Reranking stub (cross-encoder / heuristic)
 - EXPLAIN ANALYZE benchmarks for vector queries
 - pgvector index tuning
-- Architecture diagram (PNG)
 - Query caching
 - Streaming responses
 
@@ -242,8 +241,3 @@ This is the type of system that can realistically evolve into:
 LLM integration is intentionally optional.
 
 The project focuses on backend correctness, performance, and architecture rather than direct API usage.
-
----
-
-Author:
-Backend-focused AI / LLM Engineer
