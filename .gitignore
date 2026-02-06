@@ -20,3 +20,5 @@ venv/
 # runtime uploads
 data/uploads/
 data/*.db
+bench/results/*.txt
+hey.exe
