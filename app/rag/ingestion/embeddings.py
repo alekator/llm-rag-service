@@ -1,82 +1,83 @@
 from __future__ import annotations
 
 import hashlib
-import math
-from typing import Final
+from dataclasses import dataclass
+from typing import Literal, Protocol
 
 from openai import AsyncOpenAI
 
 from app.core.settings import get_settings
 
 
-def _l2_normalize(vec: list[float]) -> list[float]:
-    norm = math.sqrt(sum(x * x for x in vec))
-    if norm == 0.0:
-        return vec
-    return [x / norm for x in vec]
+class EmbeddingsBackend(Protocol):
+    @property
+    def dim(self) -> int: ...
+    async def embed(self, texts: list[str]) -> list[list[float]]: ...
 
 
-def _mock_embedding(text: str, dim: int) -> list[float]:
-    """
-    Deterministic embedding based on sha256(text + counter).
-    Same input => same vector. Good for local/dev without OpenAI.
-    """
-    out: list[float] = []
-    counter = 0
-    # generate enough bytes to fill dim floats
-    while len(out) < dim:
-        h = hashlib.sha256(f"{counter}:{text}".encode()).digest()
-        # digest is 32 bytes -> 8 x uint32
-        for i in range(0, len(h), 4):
-            if len(out) >= dim:
-                break
-            u = int.from_bytes(h[i : i + 4], "little", signed=False)
-            # map to [-1, 1]
-            out.append((u / 2**32) * 2.0 - 1.0)
-        counter += 1
+@dataclass(frozen=True)
+class OpenAIEmbeddingsBackend:
+    client: AsyncOpenAI
+    model: str
+    _dim: int
 
-    return _l2_normalize(out)
+    @property
+    def dim(self) -> int:
+        return self._dim
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        resp = await self.client.embeddings.create(model=self.model, input=texts)
+        return [d.embedding for d in resp.data]
+
+
+@dataclass(frozen=True)
+class MockEmbeddingsBackend:
+    _dim: int = 1536
+
+    @property
+    def dim(self) -> int:
+        return self._dim
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        # детерминированные эмбеддинги: одинаковый текст -> одинаковый вектор
+        out: list[list[float]] = []
+        for t in texts:
+            h = hashlib.sha256(t.encode("utf-8")).digest()
+            # растягиваем hash до нужной длины
+            raw = (h * ((self._dim // len(h)) + 1))[: self._dim]
+            vec = [(b - 128) / 128.0 for b in raw]  # [-1..1]
+            out.append(vec)
+        return out
 
 
 class EmbeddingsClient:
-    _DEFAULT_OPENAI_MODEL: Final[str] = "text-embedding-3-small"
-
     def __init__(self) -> None:
         s = get_settings()
 
-        backend = s.embeddings_backend.lower().strip()
-        if backend not in {"auto", "openai", "mock"}:
-            raise RuntimeError(f"Invalid APP_EMBEDDINGS_BACKEND={s.embeddings_backend!r}")
+        backend: Literal["auto", "openai", "mock"] = getattr(s, "embeddings_backend", "auto")
+        dim: int = getattr(s, "embeddings_dim", 1536)
 
-        self._dim: int = s.embeddings_dim
-        self._use_openai: bool
+        if backend == "auto":
+            backend = "openai" if getattr(s, "openai_api_key", None) else "mock"
 
-        api_key = s.openai_api_key
         if backend == "openai":
+            api_key = getattr(s, "openai_api_key", None)
             if not api_key:
-                raise RuntimeError("OPENAI_API_KEY is not set but embeddings_backend=openai")
-            self._use_openai = True
-        elif backend == "mock":
-            self._use_openai = False
+                raise RuntimeError("OPENAI_API_KEY is not set")
+
+            client = AsyncOpenAI(api_key=api_key, base_url=getattr(s, "openai_base_url", None))
+            model = getattr(s, "openai_embeddings_model", "text-embedding-3-small")
+            self._backend: EmbeddingsBackend = OpenAIEmbeddingsBackend(
+                client=client,
+                model=model,
+                _dim=dim,
+            )
         else:
-            # auto
-            self._use_openai = bool(api_key)
+            self._backend = MockEmbeddingsBackend(_dim=dim)
 
-        self._client: AsyncOpenAI | None = None
-        self._model: str = s.openai_embeddings_model or self._DEFAULT_OPENAI_MODEL
-
-        if self._use_openai:
-            # base_url может быть None — это ок
-            self._client = AsyncOpenAI(api_key=api_key, base_url=s.openai_base_url)
+    @property
+    def dim(self) -> int:
+        return self._backend.dim
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        if not texts:
-            return []
-
-        if not self._use_openai:
-            return [_mock_embedding(t, self._dim) for t in texts]
-
-        # openai path
-        assert self._client is not None
-        resp = await self._client.embeddings.create(model=self._model, input=texts)
-        return [d.embedding for d in resp.data]
+        return await self._backend.embed(texts)
