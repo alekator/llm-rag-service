@@ -1,0 +1,132 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 YaBrowser/25.12.0.0 Safari/537.36" version="29.3.8">
+  <diagram id="rag-arch" name="Architecture">
+    <mxGraphModel dx="2946" dy="1144" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="lane_client" parent="1" style="swimlane;horizontal=0;startSize=30;rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Client" vertex="1">
+          <mxGeometry height="820" width="250" x="20" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="client" parent="lane_client" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="CLI / UI&#xa;(curl / Postman)" vertex="1">
+          <mxGeometry height="60" width="180" x="50" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_api" parent="1" style="swimlane;horizontal=0;startSize=30;rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="FastAPI Service" vertex="1">
+          <mxGeometry height="820" width="500" x="290" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="api_docs" parent="lane_api" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="POST /api/v1/documents&#xa;Upload PDF/DOCX/TXT" vertex="1">
+          <mxGeometry height="70" width="350" x="80" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="api_status" parent="lane_api" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="GET /api/v1/documents/{id}&#xa;status: uploaded/processing/ready/failed" vertex="1">
+          <mxGeometry height="70" width="350" x="80" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="api_query" parent="lane_api" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="POST /api/v1/query&#xa;Retrieval-first answer + sources" vertex="1">
+          <mxGeometry height="70" width="350" x="140" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="embed_q" parent="lane_api" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Embed question&#xa;backend: mock/openai" vertex="1">
+          <mxGeometry height="60" width="350" x="140" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="retrieve" parent="lane_api" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="pgvector search&#xa;ORDER BY cosine_distance" vertex="1">
+          <mxGeometry height="60" width="350" x="140" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="compose" parent="lane_api" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Build context + sources&#xa;(top_k chunks)" vertex="1">
+          <mxGeometry height="60" width="350" x="40" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="llm_opt" parent="lane_api" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="LLM (optional)&#xa;disabled by default&#xa;openai when key provided" vertex="1">
+          <mxGeometry height="60" width="350" x="40" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_queue" parent="1" style="swimlane;horizontal=0;startSize=30;rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Queue" vertex="1">
+          <mxGeometry height="820" width="250" x="810" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" parent="lane_queue" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Redis&lt;br&gt;(arq task queue + retry + at-least-once)" vertex="1">
+          <mxGeometry height="70" width="180" x="50" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_worker" parent="1" style="swimlane;horizontal=0;startSize=30;rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Worker (arq)" vertex="1">
+          <mxGeometry height="820" width="330" x="1080" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_job" parent="lane_worker" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="ingest_document(job)&lt;br&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;set status=processing &lt;br&gt;set status=ready/failed&lt;br&gt;&lt;/span&gt;async background processing&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="260" x="50" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="parse" parent="lane_worker" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Parse&#xa;PDF / DOCX / TXT" vertex="1">
+          <mxGeometry height="60" width="260" x="50" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="chunk" parent="lane_worker" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Chunking&#xa;overlap / size" vertex="1">
+          <mxGeometry height="60" width="260" x="50" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="embed" parent="lane_worker" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Embeddings&#xa;backend: mock (default) / openai" vertex="1">
+          <mxGeometry height="60" width="260" x="50" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="persist" parent="lane_worker" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Persist chunks + vectors" vertex="1">
+          <mxGeometry height="60" width="260" x="50" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_db" parent="1" style="swimlane;horizontal=0;startSize=30;rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="Storage" vertex="1">
+          <mxGeometry height="820" width="230" x="1430" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="pg" parent="lane_db" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="PostgreSQL&#xa;documents + chunks" vertex="1">
+          <mxGeometry height="70" width="180" x="40" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="pgvector" parent="lane_db" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;" value="pgvector column&#xa;vector(1536)&#xa;+ ivfflat index" vertex="1">
+          <mxGeometry height="90" width="180" x="40" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="FeLQs0_aN3xRjHeEVgas-1" parent="lane_db" style="whiteSpace=wrap;html=1;aspect=fixed;" value="&lt;div&gt;Default mode:&lt;/div&gt;&lt;div&gt;- mock embeddings&lt;/div&gt;&lt;div&gt;- LLM disabled&lt;/div&gt;&lt;div&gt;- retrieval-only&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Production mode:&lt;/div&gt;&lt;div&gt;- OpenAI embeddings&lt;/div&gt;&lt;div&gt;- optional LLM reranking / generation&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="160" x="50" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="client" style="endArrow=block;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=none;fontColor=default;" target="api_docs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="api_docs" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="redis" style="endArrow=block;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=none;fontColor=default;" target="worker_job">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1030" y="117" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="worker_job" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="parse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="parse" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="chunk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="chunk" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="embed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="embed" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="persist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="persist" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="api_status" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="client" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="api_query">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="api_query" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="embed_q">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="embed_q" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="retrieve">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="retrieve" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="pgvector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="retrieve" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="compose">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="compose" style="endArrow=block;html=1;rounded=0;dashed=1;labelBackgroundColor=none;fontColor=default;" target="llm_opt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="llm_opt" style="endArrow=block;html=1;rounded=0;dashed=1;labelBackgroundColor=none;fontColor=default;" target="api_query" value="optional">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="api_docs" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=none;fontColor=default;" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="1" source="api_status" style="endArrow=block;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;labelBackgroundColor=none;fontColor=default;" target="client">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
