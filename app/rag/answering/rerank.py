@@ -1,71 +1,31 @@
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
+from collections.abc import Callable
+from typing import TypeVar
 
-_WORD_RE = re.compile(r"[a-zA-Z0-9_]+")
+from app.rag.reranking import RerankedItem, rerank_by_overlap
 
-
-def _tokenize(text: str) -> list[str]:
-    return _WORD_RE.findall(text.lower())
+T = TypeVar("T")
 
 
-def _lexical_score(question: str, chunk_text: str) -> float:
-    """
-    Deterministic lexical relevance:
-    - token overlap (precision-like)
-    - small bonus for exact substring match
-    """
-    q_tokens = _tokenize(question)
-    if not q_tokens:
-        return 0.0
-
-    c_tokens = _tokenize(chunk_text)
-    if not c_tokens:
-        return 0.0
-
-    q_set = set(q_tokens)
-    c_set = set(c_tokens)
-
-    overlap = len(q_set & c_set)
-    # normalize to [0..1] (ish)
-    score = overlap / max(1, len(q_set))
-
-    # bonus if whole question (or big part) appears
-    q_norm = " ".join(q_tokens)
-    c_norm = " ".join(c_tokens)
-    if q_norm and q_norm in c_norm:
-        score += 0.2
-
-    return min(score, 1.0)
-
-
-@dataclass(frozen=True)
-class RerankedItem:
-    index: int
-    combined_score: float
-
-
-def rerank_stub(
+def rerank_candidates_overlap(
     *,
     question: str,
-    texts: list[str],
-    vector_scores: list[float],
-    alpha: float = 0.7,
-) -> list[int]:
+    items: list[tuple[T, float]],
+    get_text: Callable[[T], str],
+    weight: float,
+) -> list[tuple[T, float]]:
     """
-    Rerank indices by a weighted combo:
-      combined = alpha * vector_score + (1-alpha) * lexical_score
-    Returns indices sorted by combined desc.
+    items: list of (item, original_score) where higher score is better.
+    returns: same shape, but sorted by blended score (vector+overlap).
     """
-    if len(texts) != len(vector_scores):
-        raise ValueError("texts and vector_scores length mismatch")
+    reranked_items = [RerankedItem(item=obj, score=float(score)) for (obj, score) in items]
 
-    items: list[RerankedItem] = []
-    for i, (t, vs) in enumerate(zip(texts, vector_scores, strict=True)):
-        ls = _lexical_score(question, t)
-        combined = alpha * float(vs) + (1.0 - alpha) * float(ls)
-        items.append(RerankedItem(index=i, combined_score=combined))
+    reranked = rerank_by_overlap(
+        question=question,
+        items=reranked_items,
+        get_text=get_text,
+        weight=weight,
+    )
 
-    items.sort(key=lambda x: x.combined_score, reverse=True)
-    return [x.index for x in items]
+    return [(ri.item, ri.score) for ri in reranked]

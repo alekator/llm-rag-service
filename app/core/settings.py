@@ -56,10 +56,21 @@ class Settings(BaseSettings):
     )
 
     rerank_backend: str = Field(
-        default="stub",
+        default="disabled",
         validation_alias="APP_RERANK_BACKEND",
-        description="stub|disabled",
+        description="disabled|overlap",
     )
+    rerank_weight: float = Field(
+        default=0.35,
+        validation_alias="APP_RERANK_WEIGHT",
+        description="0..1, how much overlap affects final score",
+    )
+    rerank_candidates_multiplier: int = Field(
+        default=3,
+        validation_alias="APP_RERANK_CANDIDATES_MULTIPLIER",
+        description="fetch top_k * multiplier from vector search, then rerank down to top_k",
+    )
+
     rerank_alpha: float = Field(
         default=0.7,
         validation_alias="APP_RERANK_ALPHA",
@@ -69,11 +80,6 @@ class Settings(BaseSettings):
         default="none",
         validation_alias="APP_RERANKER",
         description="none|overlap (rerank retrieved chunks by token overlap)",
-    )
-    rerank_weight: float = Field(
-        default=0.3,
-        validation_alias="APP_RERANK_WEIGHT",
-        description="Weight for reranker score in final score (0..1)",
     )
 
 

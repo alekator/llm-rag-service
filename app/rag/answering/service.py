@@ -6,9 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.schemas.query import SourceChunk
 from app.core.settings import get_settings
 from app.rag.answering.llm import generate_answer_llm
-from app.rag.answering.rerank import rerank_stub
+from app.rag.answering.rerank import rerank_candidates_overlap
 from app.rag.ingestion.embeddings import EmbeddingsClient
-from app.rag.reranking import RerankedItem, rerank_by_overlap
 from app.repos.chunks import ChunkRepository
 
 logger = logging.getLogger(__name__)
@@ -49,29 +48,30 @@ async def answer_question(
         limit=top_k,
     )
 
-    # 2.5 rerank (deterministic stub)
     s = get_settings()
-    if getattr(s, "rerank_backend", "stub") == "stub" and chunks:
-        texts = [c.text for c, _ in chunks]
-        vector_scores = [score for _, score in chunks]
-        order = rerank_stub(
-            question=question,
-            texts=texts,
-            vector_scores=vector_scores,
-            alpha=float(getattr(s, "rerank_alpha", 0.7)),
-        )
-        chunks = [chunks[i] for i in order]
 
-    settings = get_settings()
-    if settings.reranker == "overlap":
-        reranked = rerank_by_overlap(
+    candidates_limit = top_k
+    if s.rerank_backend != "disabled":
+        candidates_limit = max(top_k, top_k * int(s.rerank_candidates_multiplier))
+
+    chunks = await chunk_repo.search_with_score(
+        document_id=document_id,
+        query_embedding=query_vector,
+        limit=candidates_limit,
+    )
+
+    if s.rerank_backend == "overlap" and chunks:
+        w = float(s.rerank_weight)
+        w = 0.0 if w < 0.0 else (1.0 if w > 1.0 else w)
+
+        chunks = rerank_candidates_overlap(
             question=question,
-            items=[RerankedItem(item=c, score=score) for c, score in chunks],
+            items=chunks,
             get_text=lambda c: c.text,
-            weight=settings.rerank_weight,
-        )
-    # restore the same shape [(Chunk, score)]
-    chunks = [(r.item, r.score) for r in reranked]
+            weight=w,
+        )[:top_k]
+    else:
+        chunks = chunks[:top_k]
 
     sources: list[SourceChunk] = [
         SourceChunk(
