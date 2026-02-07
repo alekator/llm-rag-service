@@ -23,3 +23,4 @@ data/*.db
 bench/results/*.txt
 hey.exe
 upload.json
+tmp_query.json

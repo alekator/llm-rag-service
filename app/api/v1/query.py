@@ -1,8 +1,7 @@
 import logging
 import time
-import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.query import QueryMeta, QueryRequest, QueryResponse, QueryTimings
@@ -18,16 +17,17 @@ router = APIRouter()
 @router.post("/query", response_model=QueryResponse)  # type: ignore
 async def query_endpoint(
     payload: QueryRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> QueryResponse:
+    request_id = str(getattr(request.state, "request_id", ""))
     s = get_settings()
-    request_id = str(uuid.uuid4())
 
     # top_k: default + clamp
     top_k_in = payload.top_k if payload.top_k is not None else int(s.top_k_default)
     top_k = max(1, min(int(top_k_in), int(s.top_k_max)))
 
-    # candidates_limit: top_k * multiplier (if rerank enabled), иначе top_k
+    # candidates_limit: top_k * multiplier
     candidates_limit = top_k
     if getattr(s, "rerank_backend", "stub") != "disabled":
         candidates_limit = max(top_k, top_k * int(getattr(s, "rerank_candidates_multiplier", 3)))
