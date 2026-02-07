@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,7 @@ async def query_endpoint(
     request: Request,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> QueryResponse:
-    request_id = str(getattr(request.state, "request_id", ""))
+    request_id = str(getattr(request.state, "request_id", "")) or str(uuid.uuid4())
     s = get_settings()
 
     # top_k: default + clamp

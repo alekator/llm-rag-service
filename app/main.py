@@ -36,6 +36,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestIdLoggingMiddleware)
 
     app.include_router(v1_router, prefix=settings.api_v1_prefix)
+    app.add_middleware(RequestIdLoggingMiddleware)
     return app
 
 
