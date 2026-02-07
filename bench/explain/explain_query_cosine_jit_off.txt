@@ -1,0 +1,22 @@
+﻿SET
+                                                 QUERY PLAN
+-------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2.35..2.36 rows=1 width=44) (actual time=0.025..0.026 rows=0 loops=1)
+   Buffers: shared hit=5
+   InitPlan 1 (returns $0)
+     ->  Limit  (cost=0.00..0.13 rows=1 width=18) (never executed)
+           ->  Seq Scan on chunks chunks_1  (cost=0.00..2.17 rows=17 width=18) (never executed)
+                 Filter: (embedding IS NOT NULL)
+   ->  Sort  (cost=2.22..2.23 rows=1 width=44) (actual time=0.025..0.025 rows=0 loops=1)
+         Sort Key: ((chunks.embedding <=> $0))
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=5
+         ->  Seq Scan on chunks  (cost=0.00..2.21 rows=1 width=44) (actual time=0.006..0.006 rows=0 loops=1)
+               Filter: (document_id = '0a2ee623-5af2-4e24-b892-c29671de3eb1'::uuid)
+               Rows Removed by Filter: 17
+               Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=150
+ Planning Time: 0.572 ms
+ Execution Time: 0.067 ms
+(18 rows)
