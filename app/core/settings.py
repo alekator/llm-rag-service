@@ -55,6 +55,17 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    rerank_backend: str = Field(
+        default="stub",
+        validation_alias="APP_RERANK_BACKEND",
+        description="stub|disabled",
+    )
+    rerank_alpha: float = Field(
+        default=0.7,
+        validation_alias="APP_RERANK_ALPHA",
+        description="weight for vector score in combined rerank",
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

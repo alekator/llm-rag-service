@@ -4,7 +4,9 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.query import SourceChunk
+from app.core.settings import get_settings
 from app.rag.answering.llm import generate_answer_llm
+from app.rag.answering.rerank import rerank_stub
 from app.rag.ingestion.embeddings import EmbeddingsClient
 from app.repos.chunks import ChunkRepository
 
@@ -45,6 +47,19 @@ async def answer_question(
         query_embedding=query_vector,
         limit=top_k,
     )
+
+    # 2.5 rerank (deterministic stub)
+    s = get_settings()
+    if getattr(s, "rerank_backend", "stub") == "stub" and chunks:
+        texts = [c.text for c, _ in chunks]
+        vector_scores = [score for _, score in chunks]
+        order = rerank_stub(
+            question=question,
+            texts=texts,
+            vector_scores=vector_scores,
+            alpha=float(getattr(s, "rerank_alpha", 0.7)),
+        )
+        chunks = [chunks[i] for i in order]
 
     sources: list[SourceChunk] = [
         SourceChunk(
