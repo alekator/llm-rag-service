@@ -31,6 +31,16 @@ class Settings(BaseSettings):
         validation_alias="APP_EMBEDDINGS_DIM",
         description="Vector size for mock embeddings and DB column dimension if used",
     )
+    top_k_default: int = Field(
+        default=5,
+        validation_alias="APP_TOP_K_DEFAULT",
+        description="Default top_k when not provided",
+    )
+    top_k_max: int = Field(
+        default=20,
+        validation_alias="APP_TOP_K_MAX",
+        description="Upper bound for top_k to protect service",
+    )
 
     llm_backend: str = Field(
         default="disabled",

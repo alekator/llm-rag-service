@@ -22,3 +22,4 @@ data/uploads/
 data/*.db
 bench/results/*.txt
 hey.exe
+upload.json
