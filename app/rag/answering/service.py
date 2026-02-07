@@ -8,6 +8,7 @@ from app.core.settings import get_settings
 from app.rag.answering.llm import generate_answer_llm
 from app.rag.answering.rerank import rerank_stub
 from app.rag.ingestion.embeddings import EmbeddingsClient
+from app.rag.reranking import RerankedItem, rerank_by_overlap
 from app.repos.chunks import ChunkRepository
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,17 @@ async def answer_question(
             alpha=float(getattr(s, "rerank_alpha", 0.7)),
         )
         chunks = [chunks[i] for i in order]
+
+    settings = get_settings()
+    if settings.reranker == "overlap":
+        reranked = rerank_by_overlap(
+            question=question,
+            items=[RerankedItem(item=c, score=score) for c, score in chunks],
+            get_text=lambda c: c.text,
+            weight=settings.rerank_weight,
+        )
+    # restore the same shape [(Chunk, score)]
+    chunks = [(r.item, r.score) for r in reranked]
 
     sources: list[SourceChunk] = [
         SourceChunk(

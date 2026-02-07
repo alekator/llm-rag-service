@@ -65,6 +65,16 @@ class Settings(BaseSettings):
         validation_alias="APP_RERANK_ALPHA",
         description="weight for vector score in combined rerank",
     )
+    reranker: str = Field(
+        default="none",
+        validation_alias="APP_RERANKER",
+        description="none|overlap (rerank retrieved chunks by token overlap)",
+    )
+    rerank_weight: float = Field(
+        default=0.3,
+        validation_alias="APP_RERANK_WEIGHT",
+        description="Weight for reranker score in final score (0..1)",
+    )
 
 
 @lru_cache(maxsize=1)
