@@ -1,243 +1,261 @@
-# LLM RAG Service (Backend-focused, Production-like)
+# LLM RAG Service — Production-Grade Retrieval-Augmented Generation Backend
 
-Production-oriented Retrieval-Augmented Generation (RAG) backend service built with FastAPI, PostgreSQL + pgvector, async workers, and a retrieval-first design.
+A production-oriented Retrieval-Augmented Generation (RAG) backend service built with FastAPI, PostgreSQL + pgvector, Redis + ARQ, and strict backend engineering practices.
 
-The project is intentionally designed to:
-- look and feel like a real backend service,
-- be discussable on LLM / RAG / Backend interviews,
-- work without a real OpenAI API key (mock embeddings & LLM fallback),
-- demonstrate clean architecture, async pipelines, and performance awareness.
+This service is designed as a real-world backend system: async-first, retrieval-first, observable, deterministic by default, and scalable by architecture.
 
 ---
 
-## High-level Overview
+## Key Highlights
 
-This service allows you to:
+- Retrieval-first architecture (LLM is optional, never required)
+- Vector search in PostgreSQL using pgvector (cosine similarity)
+- Async ingestion pipeline via Redis + ARQ workers
+- Deterministic local & CI execution (mock embeddings, stub LLM)
+- Strict backend discipline: typing, linting, testing, migrations
+- Explicit observability: request IDs, structured logs, timings
+- Performance-aware design with benchmarks and EXPLAIN plans
 
-1. Upload documents (PDF / text)
-2. Asynchronously ingest them:
-   - parse
-   - chunk with overlap
+---
+
+## High-Level Architecture
+
+```mermaid
+flowchart LR
+    Client --> API[FastAPI API]
+    API --> PG[(PostgreSQL + pgvector)]
+    API --> Redis[(Redis Queue)]
+    Redis --> Worker[ARQ Worker]
+    Worker --> PG
+    API -->|Query| PG
+    API -->|Optional| LLM[LLM Backend]
+```
+
+---
+
+## RAG Query Pipeline
+
+Retrieval-first pipeline (LLM is optional):
+
+1. Embed user question
+2. Vector similarity search in pgvector
+3. Candidate selection
+4. Optional reranking
+5. Context construction
+6. Optional LLM answer generation
+7. Always return sources with relevance scores
+
+---
+
+## Query Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as FastAPI
+    participant DB as PostgreSQL+pgvector
+    participant LLM
+
+    Client->>API: POST /query
+    API->>DB: vector similarity search
+    DB-->>API: top-k chunks
+    API->>API: optional reranking
+    API->>LLM: optional generate answer
+    LLM-->>API: answer (optional)
+    API-->>Client: sources + answer + timings
+```
+
+---
+
+## Ingestion Pipeline
+
+1. Client uploads document
+2. API enqueues ingestion task to Redis
+3. ARQ worker processes ingestion:
+   - parse document
+   - chunk text
    - generate embeddings
-   - store vectors in PostgreSQL (pgvector)
-3. Query documents via `/query` endpoint:
-   - vector similarity search
-   - score & return relevant chunks
-   - optionally generate an LLM answer (disabled by default)
-
-The system is retrieval-first: even without an LLM, it always returns sources with relevance scores.
+   - persist chunks and vectors
+4. Document status transitions:
+   uploaded → processing → ready / failed
 
 ---
 
-## Architecture
+## Ingestion Sequence Diagram
 
-![RAG Service Architecture](docs/Architecture.png)
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Redis
+    participant Worker
+    participant DB
 
-High-level architecture of the service showing:
-- async document ingestion via Redis + ARQ
-- vector storage in PostgreSQL (pgvector)
-- retrieval-first query pipeline
-- optional LLM integration
-
-Client
-→ FastAPI API
-→ PostgreSQL (pgvector)
-→ Redis (task queue)
-→ ARQ worker (ingestion pipeline)
-
-Main components:
-- FastAPI (async HTTP API)
-- PostgreSQL + pgvector (vector storage)
-- Redis + ARQ (background ingestion)
-- SQLAlchemy async ORM
-- Strict typing (mypy), linting (ruff), pre-commit hooks
+    Client->>API: POST /documents
+    API->>Redis: enqueue ingestion job
+    Worker->>Redis: consume job
+    Worker->>Worker: parse & chunk
+    Worker->>Worker: embed chunks
+    Worker->>DB: persist chunks & vectors
+    Worker-->>API: update document status
+```
 
 ---
 
-## Retrieval Pipeline (Core RAG Flow)
+## Environment Configuration
 
-1. Embed query
-2. Vector similarity search in pgvector (cosine distance)
-3. Score normalization
-4. Context construction
-5. Optional LLM answer generation
+### Default Mode (No External APIs)
 
-If embeddings or LLM are unavailable, the system degrades gracefully:
-- no crashes
-- retrieval still works
-- sources are returned
-
----
-
-## Embeddings & LLM Strategy (No API Key Required)
-
-This project intentionally supports multiple backends.
-
-Embeddings backends:
-- openai — real OpenAI embeddings (requires API key)
-- mock — deterministic fake embeddings (default)
-
-Controlled via environment variables:
-
+```env
 APP_EMBEDDINGS_BACKEND=mock
-APP_EMBEDDINGS_DIM=1536
+APP_LLM_BACKEND=disabled
+APP_RERANK_BACKEND=stub
+APP_RERANK_ALPHA=0.7
+```
 
-LLM backends:
-- disabled — retrieval-only mode (default)
-- openai — real chat completion
+This mode:
+- Requires no API keys
+- Is fully deterministic
+- Suitable for local development and CI
+- Always returns retrieval results
 
-This allows:
-- full local development
-- CI / tests without external dependencies
-- honest demonstration of RAG mechanics
+### Enabling OpenAI (Optional)
 
----
+```env
+APP_EMBEDDINGS_BACKEND=openai
+APP_LLM_BACKEND=openai
+OPENAI_API_KEY=your_api_key
+```
 
-## Vector Storage (pgvector)
-
-- PostgreSQL extension: pgvector
-- Vector column with fixed dimension
-- Cosine distance ordering
-- Indexed for similarity search
-
-Example query (simplified):
-
-SELECT *
-FROM chunks
-ORDER BY embedding <=> :query_embedding
-LIMIT :k;
+LLM usage is optional and isolated. If OpenAI is unavailable, the system falls back to retrieval-only mode.
 
 ---
 
-## Load Testing (hey)
+## Observability
 
-Simple load tests were executed against `/api/v1/query` using hey.
+- X-Request-Id propagation across API, workers, logs
+- Structured JSON logging
+- Per-stage timing metrics:
+  - embed_query_ms
+  - vector_search_ms
+  - rerank_ms
+  - llm_ms
+  - total_ms
 
-Test command example:
-
-hey -n 200 -c 20 -m POST -T "application/json" -D bench/query.json http://127.0.0.1:8000/api/v1/query
-
-Results (retrieval-only, mock embeddings):
-
-n = 200, c = 20
-- Requests/sec: ~300
-- Average latency: ~63 ms
-- p95 latency: ~252 ms
-- p99 latency: ~273 ms
-
-n = 2000, c = 50
-- Requests/sec: ~430
-- Average latency: ~108 ms
-- p95 latency: ~225 ms
-- p99 latency: ~308 ms
-
-These results demonstrate:
-- stable throughput
-- predictable latency
-- no blocking I/O in the query path
+This makes performance characteristics explicit and measurable.
 
 ---
 
-## API Endpoints
+## Benchmarks
 
-Upload document:
+The bench/ directory contains:
+- Query payloads
+- SQL EXPLAIN ANALYZE plans
+- Load test results
 
-POST /api/v1/documents
+Example load test:
 
-Get document status:
-
-GET /api/v1/documents/{document_id}
-
-Query document (RAG):
-
-POST /api/v1/query
-
-Example request payload:
-
-{
-  "document_id": "UUID",
-  "question": "What is this document about?",
-  "top_k": 5
-}
-
-Example response:
-
-{
-  "answer": null,
-  "sources": [
-    {
-      "chunk_index": 1,
-      "text": "...",
-      "score": 0.82
-    }
-  ]
-}
-
----
-
-## Running the Project
-
-Requirements:
-- Python 3.11
-- Docker & docker-compose
-
-Start infrastructure:
-
-docker compose up -d
-
-Run API:
-
-python -m uvicorn app.main:app --reload
-
-Run worker:
-
-python -m arq app.workers.arq_worker.WorkerSettings
+```bash
+hey -n 200 -c 20 -m POST -T application/json \
+  -D bench/query.json \
+  http://127.0.0.1:8000/api/v1/query
+```
 
 ---
 
 ## Code Quality & Tooling
 
-- ruff — linting & formatting
-- mypy — strict typing
-- pytest — tests
-- pre-commit — enforced locally
-- alembic — migrations
-- Docker & docker-compose
+- ruff (linting & formatting)
+- mypy (strict typing)
+- pytest
+- pre-commit hooks
+- alembic migrations
 
 ---
 
-## Why This Project Matters
+## Architectural Decision Records (ADR)
 
-This is not a toy demo.
+### ADR-001: Retrieval-First Design
 
-It demonstrates:
-- real async backend architecture
-- vector search in a relational database
-- background ingestion pipelines
-- graceful degradation without external APIs
-- performance awareness and measurement
-- production-style code organization
+Decision:
+The system always performs retrieval and returns sources, regardless of LLM availability.
 
-This is the type of system that can realistically evolve into:
-- internal knowledge base
-- document Q&A service
-- support automation backend
-- RAG microservice
+Rationale:
+- Guarantees correctness and explainability
+- Prevents outages caused by external LLM dependencies
+- Enables deterministic CI and local execution
 
 ---
 
-## Roadmap
+### ADR-002: PostgreSQL + pgvector Instead of External Vector DB
 
-- Reranking stub (cross-encoder / heuristic)
-- EXPLAIN ANALYZE benchmarks for vector queries
-- pgvector index tuning
-- Query caching
-- Streaming responses
+Decision:
+Use PostgreSQL with pgvector instead of a dedicated vector database.
+
+Rationale:
+- Operational simplicity
+- Strong transactional guarantees
+- Easier schema evolution
+- Sufficient performance for most workloads
 
 ---
 
-## Disclaimer
+### ADR-003: Async Ingestion via Redis + ARQ
+
+Decision:
+Decouple ingestion from request path using background workers.
+
+Rationale:
+- Non-blocking uploads
+- Horizontal scalability
+- Clear failure isolation
+- Retry and backoff support
+
+---
+
+### ADR-004: Optional LLM Integration
+
+Decision:
+Treat LLMs as an enhancement, not a dependency.
+
+Rationale:
+- Core value is retrieval quality
+- LLM availability and cost are unpredictable
+- Enables graceful degradation
+
+---
+
+## Project Structure
+
+```text
+app/
+  api/            FastAPI routes
+  core/           settings, logging, middleware
+  db/             database engine & migrations
+  infra/          Redis, storage integrations
+  rag/            ingestion, retrieval, rerank, LLM logic
+  repos/          database repositories
+  workers/        ARQ background workers
+bench/            benchmarks and performance artifacts
+docs/             architecture diagrams
+tests/            automated tests
+```
+
+---
+
+## Design Principles
+
+- Retrieval-first architecture
+- Async everywhere
+- Explicit failure handling
+- Deterministic execution
+- Performance awareness
+- Clear separation of concerns
+
+---
+
+## Final Notes
 
 LLM integration is intentionally optional.
 
-The project focuses on backend correctness, performance, and architecture rather than direct API usage.
+The system prioritizes correctness, reliability, and performance of retrieval and ingestion pipelines, with LLMs treated as an enhancement rather than a dependency.
