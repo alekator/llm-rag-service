@@ -31,7 +31,7 @@ The system is retrieval-first: even without an LLM, it always returns sources wi
 
 ## Architecture
 
-![RAG Service Architecture](docs/architecture.png)
+![RAG Service Architecture](docs/Architecture.png)
 
 High-level architecture of the service showing:
 - async document ingestion via Redis + ARQ
