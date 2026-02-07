@@ -16,12 +16,10 @@ async def main() -> None:
         session = session
         assert isinstance(session, AsyncSession)
 
-        # 1) создаём документ
         doc = Document(filename="smoke.txt", content_type="text/plain", status="ready")
         session.add(doc)
-        await session.flush()  # получим doc.id
+        await session.flush()
 
-        # 2) вставим пару чанков фейковыми embedding (длины 1536)
         e1 = [0.0] * 1536
         e2 = [0.0] * 1536
         e2[0] = 1.0
@@ -36,7 +34,6 @@ async def main() -> None:
 
         await session.commit()
 
-        # 3) поиск: запрос ближе к e2
         q = [0.0] * 1536
         q[0] = 1.0
 
@@ -47,7 +44,7 @@ async def main() -> None:
         for h in hits:
             print("-", h.chunk_index, h.text)
 
-        break  # важно: нам нужна одна сессия и один прогон
+        break
 
     await close_engine()
 

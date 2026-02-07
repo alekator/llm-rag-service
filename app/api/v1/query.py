@@ -1,5 +1,4 @@
 import logging
-import time
 import uuid
 
 from fastapi import APIRouter, Depends, Request
@@ -33,22 +32,19 @@ async def query_endpoint(
     if getattr(s, "rerank_backend", "stub") != "disabled":
         candidates_limit = max(top_k, top_k * int(getattr(s, "rerank_candidates_multiplier", 3)))
 
-    t0 = time.perf_counter()
-
-    answer, sources = await answer_question(
+    answer, sources, t = await answer_question(
         session=session,
         document_id=payload.document_id,
         question=payload.question,
         top_k=top_k,
     )
-    t_total = (time.perf_counter() - t0) * 1000.0
 
     timings = QueryTimings(
-        embed_query_ms=0.0,
-        vector_search_ms=0.0,
-        rerank_ms=0.0,
-        llm_ms=0.0,
-        total_ms=round(t_total, 3),
+        embed_query_ms=t.embed_query_ms,
+        vector_search_ms=t.vector_search_ms,
+        rerank_ms=t.rerank_ms,
+        llm_ms=t.llm_ms,
+        total_ms=t.total_ms,
     )
 
     meta = QueryMeta(

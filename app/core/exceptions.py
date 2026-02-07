@@ -17,7 +17,6 @@ def _rid(request: Request) -> str:
 
 
 async def validation_exception_handler(request: Request, exc: Exception) -> Response:
-    # add_exception_handler требует Exception, поэтому кастим
     vexc = cast(RequestValidationError, exc)
 
     rid = _rid(request)

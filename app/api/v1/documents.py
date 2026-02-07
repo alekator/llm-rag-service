@@ -26,7 +26,6 @@ async def upload_document(
     filename = file.filename or "upload.bin"
     content_type = file.content_type or "application/octet-stream"
 
-    # fallback для curl/windows (часто шлёт octet-stream)
     if content_type == "application/octet-stream":
         lower = filename.lower()
         if lower.endswith((".txt", ".md", ".log", ".csv", ".json")):

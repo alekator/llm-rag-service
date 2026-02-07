@@ -13,5 +13,4 @@ async def generate_answer_llm(*, question: str, context: str) -> str:
     if not settings.openai_api_key:
         raise RuntimeError("OPENAI_API_KEY is not set")
 
-    # Реальную реализацию позже
     return "LLM disabled (stub)"

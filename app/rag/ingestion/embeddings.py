@@ -39,11 +39,9 @@ class MockEmbeddingsBackend:
         return self._dim
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        # детерминированные эмбеддинги: одинаковый текст -> одинаковый вектор
         out: list[list[float]] = []
         for t in texts:
             h = hashlib.sha256(t.encode("utf-8")).digest()
-            # растягиваем hash до нужной длины
             raw = (h * ((self._dim // len(h)) + 1))[: self._dim]
             vec = [(b - 128) / 128.0 for b in raw]  # [-1..1]
             out.append(vec)
